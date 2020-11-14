@@ -147,7 +147,6 @@ APEX_fetch(APEX_CPU *cpu)
         cpu->fetch.rs1 = current_ins->rs1;
         cpu->fetch.rs2 = current_ins->rs2;
         cpu->fetch.imm = current_ins->imm;
-        cpu->fetch.rd = current_ins->rd;
 
         /* Update PC for next instruction */
         cpu->pc += 4;
@@ -193,6 +192,19 @@ APEX_decode(APEX_CPU *cpu)
                 cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
                 break;
             }
+
+            case OPCODE_MOVC:
+            {
+                /* MOVC doesn't have register operands */
+                break;
+            }
+
+            case OPCODE_SUB:
+            {
+                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+                break;
+            }
         }
 
         /* Copy data from decode latch to execute latch*/
@@ -223,6 +235,16 @@ APEX_execute(APEX_CPU *cpu)
             {
                 cpu->execute.result_buffer
                     = cpu->execute.rs1_value + cpu->execute.rs2_value;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
                 break;
             }
 
@@ -235,17 +257,19 @@ APEX_execute(APEX_CPU *cpu)
 
             case OPCODE_BZ:
             {
-                if (cpu->zero_flag == 0)
+                if (cpu->zero_flag == TRUE)
                 {
-                    /* Calculate new PC */
+                    /* Calculate new PC, and send it to fetch unit */
                     cpu->pc = cpu->execute.pc + cpu->execute.imm;
+                    
+                    /* Since we are using reverse callbacks for pipeline stages, 
+                     * this will prevent the new instruction from being fetched in the current cycle*/
                     cpu->fetch_from_next_cycle = TRUE;
 
                     /* Flush previous stages */
                     cpu->decode.has_insn = FALSE;
-                    cpu->fetch.has_insn = FALSE;
 
-                    /* Restart fetch stage */
+                    /* Make sure fetch stage is enabled to start fetching from new PC */
                     cpu->fetch.has_insn = TRUE;
                 }
                 break;
@@ -253,18 +277,36 @@ APEX_execute(APEX_CPU *cpu)
 
             case OPCODE_BNZ:
             {
-                if (cpu->zero_flag != 0)
+                if (cpu->zero_flag == FALSE)
                 {
-                    /* Calculate new PC */
+                    /* Calculate new PC, and send it to fetch unit */
                     cpu->pc = cpu->execute.pc + cpu->execute.imm;
+                    
+                    /* Since we are using reverse callbacks for pipeline stages, 
+                     * this will prevent the new instruction from being fetched in the current cycle*/
                     cpu->fetch_from_next_cycle = TRUE;
 
                     /* Flush previous stages */
                     cpu->decode.has_insn = FALSE;
-                    cpu->fetch.has_insn = FALSE;
 
-                    /* Restart fetch stage */
+                    /* Make sure fetch stage is enabled to start fetching from new PC */
                     cpu->fetch.has_insn = TRUE;
+                }
+                break;
+            }
+
+            case OPCODE_MOVC: 
+            {
+                cpu->execute.result_buffer = cpu->execute.imm;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
                 }
                 break;
             }
@@ -295,6 +337,7 @@ APEX_memory(APEX_CPU *cpu)
         {
             case OPCODE_ADD:
             {
+                /* No work for ADD */
                 break;
             }
 
@@ -338,6 +381,12 @@ APEX_writeback(APEX_CPU *cpu)
             }
 
             case OPCODE_LOAD:
+            {
+                cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+                break;
+            }
+
+            case OPCODE_MOVC: 
             {
                 cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
                 break;
@@ -445,11 +494,10 @@ APEX_cpu_run(APEX_CPU *cpu)
         if (APEX_writeback(cpu))
         {
             /* Halt in writeback stage */
-            printf("APEX_CPU: Simulation Complete\n");
+            printf("APEX_CPU: Simulation Complete, cycles = %d instructions = %d\n", cpu->clock, cpu->insn_completed);
             break;
         }
 
-        APEX_writeback(cpu);
         APEX_memory(cpu);
         APEX_execute(cpu);
         APEX_decode(cpu);
@@ -464,7 +512,7 @@ APEX_cpu_run(APEX_CPU *cpu)
 
             if ((user_prompt_val == 'Q') || (user_prompt_val == 'q'))
             {
-                printf("APEX_CPU: Simulation Stop\n");
+                printf("APEX_CPU: Simulation Stopped, cycles = %d instructions = %d\n", cpu->clock, cpu->insn_completed);
                 break;
             }
         }

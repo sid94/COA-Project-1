@@ -11,7 +11,7 @@ A template for 5 Stage APEX In-order Pipeline
  - All the stages have latency of one cycle
  - There is a single functional unit in Execute stage which perform all the arithmetic and logic operations
  - Logic to check data dependencies has not be included
- - Includes logic for `ADD`, `LOAD`, `BZ`, `BNZ` and `HALT` instructions
+ - Includes logic for `ADD`, `LOAD`, `BZ`, `BNZ`,  `MOVC` and `HALT` instructions
  - On fetching `HALT` instruction, fetch stage stop fetching new instructions
  - When `HALT` instruction is in commit stage, simulation stops
  - You can modify the instruction semantics as per the project description
