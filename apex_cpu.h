@@ -19,6 +19,7 @@ typedef struct APEX_Instruction
     int rd;
     int rs1;
     int rs2;
+    int rs3;
     int imm;
 } APEX_Instruction;
 
@@ -30,10 +31,12 @@ typedef struct CPU_Stage
     int opcode;
     int rs1;
     int rs2;
+    int rs3;
     int rd;
     int imm;
     int rs1_value;
     int rs2_value;
+    int rs3_value;
     int result_buffer;
     int memory_address;
     int has_insn;

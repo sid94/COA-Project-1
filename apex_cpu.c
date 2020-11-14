@@ -35,6 +35,7 @@ print_instruction(const CPU_Stage *stage)
         case OPCODE_AND:
         case OPCODE_OR:
         case OPCODE_XOR:
+        case OPCODE_LDR:
         {
             printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
                    stage->rs2);
@@ -73,6 +74,15 @@ print_instruction(const CPU_Stage *stage)
             printf("%s", stage->opcode_str);
             break;
         }
+
+        case OPCODE_ADDL:
+        case OPCODE_SUBL:
+        {
+            printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
+                   stage->imm);
+            break;
+        }
+        
     }
 }
 
@@ -181,10 +191,22 @@ APEX_decode(APEX_CPU *cpu)
         switch (cpu->decode.opcode)
         {
             case OPCODE_ADD:
+            case OPCODE_SUB:
+            case OPCODE_MUL:
+            case OPCODE_AND:
+            case OPCODE_OR:
+            case OPCODE_XOR:
+            case OPCODE_LDR:
             {
                 cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
                 cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
                 break;
+            }
+
+            case OPCODE_ADDL:
+            case OPCODE_SUBL:
+            {
+                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
             }
 
             case OPCODE_LOAD:
@@ -199,12 +221,7 @@ APEX_decode(APEX_CPU *cpu)
                 break;
             }
 
-            case OPCODE_SUB:
-            {
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
-                cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
-                break;
-            }
+            
         }
 
         /* Copy data from decode latch to execute latch*/
@@ -248,11 +265,137 @@ APEX_execute(APEX_CPU *cpu)
                 break;
             }
 
+            case OPCODE_ADDL:
+            {
+                cpu->execute.result_buffer
+                    = cpu->execute.rs1_value + cpu->execute.imm;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
+                break;
+            }
+
+            case OPCODE_SUB:
+            {
+                cpu->execute.result_buffer
+                    = cpu->execute.rs1_value - cpu->execute.rs2_value;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
+                break;
+            }
+
+            case OPCODE_MUL:
+            {
+                cpu->execute.result_buffer
+                    = cpu->execute.rs1_value * cpu->execute.rs2_value;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
+                break;
+            }
+
+            case OPCODE_SUBL:
+            {
+                cpu->execute.result_buffer
+                    = cpu->execute.rs1_value - cpu->execute.imm;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
+                break;
+            }
+
+            case OPCODE_AND:
+            {
+                cpu->execute.result_buffer
+                    = cpu->execute.rs1_value & cpu->execute.rs2_value;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
+                break;
+            }
+
+            case OPCODE_OR:
+            {
+                cpu->execute.result_buffer
+                    = cpu->execute.rs1_value | cpu->execute.rs2_value;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
+                break;
+            }
+
+            case OPCODE_XOR:
+            {
+                cpu->execute.result_buffer
+                    = cpu->execute.rs1_value ^ cpu->execute.rs2_value;
+
+                /* Set the zero flag based on the result buffer */
+                if (cpu->execute.result_buffer == 0)
+                {
+                    cpu->zero_flag = TRUE;
+                } 
+                else 
+                {
+                    cpu->zero_flag = FALSE;
+                }
+                break;
+            }
+
             case OPCODE_LOAD:
             {
                 cpu->execute.memory_address
                     = cpu->execute.rs1_value + cpu->execute.imm;
                 break;
+            }
+
+            case OPCODE_LDR:
+            {
+                cpu->execute.memory_address
+                    = cpu->execute.rs1_value + cpu->execute.rs2_value;
+
             }
 
             case OPCODE_BZ:
@@ -342,12 +485,14 @@ APEX_memory(APEX_CPU *cpu)
             }
 
             case OPCODE_LOAD:
+            case OPCODE_LDR:
             {
                 /* Read from data memory */
                 cpu->memory.result_buffer
                     = cpu->data_memory[cpu->memory.memory_address];
                 break;
             }
+
         }
 
         /* Copy data from memory latch to writeback latch*/
@@ -375,12 +520,20 @@ APEX_writeback(APEX_CPU *cpu)
         switch (cpu->writeback.opcode)
         {
             case OPCODE_ADD:
+            case OPCODE_ADDL:
+            case OPCODE_SUB:
+            case OPCODE_SUBL:
+            case OPCODE_MUL:
+            case OPCODE_AND:
+            case OPCODE_OR:
+            case OPCODE_XOR:
             {
                 cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
                 break;
             }
 
             case OPCODE_LOAD:
+            case OPCODE_LDR:
             {
                 cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
                 break;
