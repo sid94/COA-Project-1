@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "gcc.exe - Build and debug active file",
+            "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "C:\\Siddhesh\\COA\\COA-Project-1\\apex_sim.exe",
-            "args": ["C:\\Siddhesh\\COA\\COA-Project-1\\input.asm"],
+            "program": "C:\\Siddhesh\\COA\\COA-Project-1\\PartB\\apex_sim.exe",
+            "args": ["C:\\Siddhesh\\COA\\COA-Project-1\\PartB\\input.asm"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -22,8 +22,7 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ],
-            "preLaunchTask": "C/C++: gcc.exe build active file"
+            ]
         }
     ]
 }

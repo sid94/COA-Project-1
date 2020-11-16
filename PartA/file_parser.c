@@ -109,9 +109,14 @@ set_opcode_str(const char *opcode_str)
         return OPCODE_STORE;
     }
 
-    if (strcmp(opcode_str, "STORE") == 0)
+    if (strcmp(opcode_str, "STR") == 0)
     {
         return OPCODE_STR;
+    }
+
+    if (strcmp(opcode_str, "CMP") == 0)
+    {
+        return OPCODE_CMP;
     }
 
     if (strcmp(opcode_str, "BZ") == 0)
@@ -139,12 +144,27 @@ split_opcode_from_insn_string(char *buffer, char tokens[2][128])
     int token_num = 0;
 
     char *token = strtok(buffer, " ");
+    char *p;
 
     while (token != NULL)
     {
         strcpy(tokens[token_num], token);
         token_num++;
         token = strtok(NULL, " ");
+    }
+
+    p = tokens[0];
+
+    /* This removes the newline character at the end of
+    * single string opcodes like HALT or NOP */
+    while(*p != '\0')
+    {
+        if (*p == '\n')
+        {
+            *p = '\0';
+            break;
+        }
+        p++;
     }
 }
 
@@ -218,6 +238,21 @@ create_APEX_instruction(APEX_Instruction *ins, char *buffer)
             ins->rs2 = get_num_from_string(tokens[1]);
             ins->imm = get_num_from_string(tokens[2]);
             break;
+        }
+
+        case OPCODE_STR:
+        {
+            ins->rs1 = get_num_from_string(tokens[0]);
+            ins->rs2 = get_num_from_string(tokens[1]);
+            ins->rs3 = get_num_from_string(tokens[2]);
+            break;
+
+        }
+
+        case OPCODE_CMP:
+        {
+            ins->rs1 = get_num_from_string(tokens[0]);
+            ins->rs2 = get_num_from_string(tokens[1]);
         }
 
         case OPCODE_BZ:

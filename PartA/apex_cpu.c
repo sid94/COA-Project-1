@@ -42,6 +42,12 @@ print_instruction(const CPU_Stage *stage)
             break;
         }
 
+        case OPCODE_CMP:
+        {
+            printf("%s,R%d,R%d ", stage->opcode_str,stage->rs1,stage->rs2);
+            break;
+        }
+
         case OPCODE_MOVC:
         {
             printf("%s,R%d,#%d ", stage->opcode_str, stage->rd, stage->imm);
@@ -59,6 +65,13 @@ print_instruction(const CPU_Stage *stage)
         {
             printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rs1, stage->rs2,
                    stage->imm);
+            break;
+        }
+
+        case OPCODE_STR:
+        {
+            printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rs1, stage->rs2,
+                   stage->rs3);
             break;
         }
 
@@ -134,7 +147,7 @@ APEX_fetch(APEX_CPU *cpu)
 {
     APEX_Instruction *current_ins;
 
-    if (cpu->fetch.has_insn)
+    if (cpu->fetch.has_insn && !cpu->fetch.isStall)
     {
         /* This fetches new branch target instruction from next cycle */
         if (cpu->fetch_from_next_cycle == TRUE)
@@ -156,25 +169,39 @@ APEX_fetch(APEX_CPU *cpu)
         cpu->fetch.rd = current_ins->rd;
         cpu->fetch.rs1 = current_ins->rs1;
         cpu->fetch.rs2 = current_ins->rs2;
+        cpu->fetch.rs3 = current_ins->rs3;
         cpu->fetch.imm = current_ins->imm;
 
-        /* Update PC for next instruction */
-        cpu->pc += 4;
-
-        /* Copy data from fetch latch to decode latch*/
-        cpu->decode = cpu->fetch;
-
-        if (ENABLE_DEBUG_MESSAGES)
-        {
-            print_stage_content("Fetch", &cpu->fetch);
-        }
-
-        /* Stop fetching new instructions if HALT is fetched */
-        if (cpu->fetch.opcode == OPCODE_HALT)
-        {
-            cpu->fetch.has_insn = FALSE;
+        //check if decode rf is stalled
+        if(cpu->decode.isStall){
+            cpu->fetch.isStall = 1;
+        }else{
+            /* Update PC for next instruction */
+            cpu->pc += 4;
+            /* Copy data from fetch latch to decode latch*/
+            cpu->decode = cpu->fetch;
         }
     }
+    else{
+        // if fetch is stalling and decode rf is free now then un stall the fetch and move the data from fetch to decode
+        if (cpu->fetch.isStall){
+            if (!cpu->decode.isStall){
+                cpu->pc += 4; cpu->fetch.isStall = 0;  cpu->decode = cpu->fetch;
+
+            }
+        }
+        
+    }
+        if (ENABLE_DEBUG_MESSAGES)
+            {
+                print_stage_content("Fetch", &cpu->fetch);
+            }
+            /* Stop fetching new instructions if HALT is fetched */
+            if (cpu->fetch.opcode == OPCODE_HALT && !cpu->decode.isStall)
+            {
+                cpu->fetch.has_insn = FALSE;
+            }
+    
 }
 
 /*
@@ -198,35 +225,93 @@ APEX_decode(APEX_CPU *cpu)
             case OPCODE_XOR:
             case OPCODE_LDR:
             {
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
-                cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+                if(!cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2]){
+                    cpu->decode.isStall = 0;
+                    cpu->registerValid[cpu->decode.rd] = 1;
+                    cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                    cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+                    
+                }else{
+                    cpu->decode.isStall = 1;
+                }
+                break;
+                
+            }
+
+            case OPCODE_STORE:
+            case OPCODE_CMP:
+            {
+                if(!cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2]){
+                    cpu->decode.isStall = 0;
+                    cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                    cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+
+                }else{
+                    cpu->decode.isStall = 1;
+                }
                 break;
             }
 
             case OPCODE_ADDL:
             case OPCODE_SUBL:
-            {
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
-            }
-
             case OPCODE_LOAD:
             {
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                if(cpu->registerValid[cpu->decode.rd] &&!cpu->registerValid[cpu->decode.rs1]){
+                    cpu->decode.isStall = 0;
+                    cpu->registerValid[cpu->decode.rd] = 1;
+                    cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                   
+                }else{
+                    cpu->decode.isStall = 1;
+                }
                 break;
+            }
+
+            // case OPCODE_LOAD:
+            // {
+            //     cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+            //     break;
+            // }
+
+            case OPCODE_STR:
+            {
+                if(!cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2] && !cpu->registerValid[cpu->decode.rs3]){
+                    cpu->decode.isStall = 0;
+                    cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                    cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+                    cpu->decode.rs3_value = cpu->regs[cpu->decode.rs3];
+                }else{
+                    cpu->decode.isStall = 1;
+                }
+                break;
+                
             }
 
             case OPCODE_MOVC:
             {
                 /* MOVC doesn't have register operands */
+                if(!cpu->registerValid[cpu->decode.rd]){
+                    cpu->decode.isStall = 0; cpu->registerValid[cpu->decode.rd] = 1;
+                }else{
+                    cpu->decode.isStall = 1;
+                }
+                break;
+
+            }
+
+            case OPCODE_HALT:{
+                cpu->decode.isStall = 0;
                 break;
             }
 
             
         }
 
-        /* Copy data from decode latch to execute latch*/
-        cpu->execute = cpu->decode;
-        cpu->decode.has_insn = FALSE;
+        if(!cpu->decode.isStall){
+            /* Copy data from decode latch to execute latch*/
+            cpu->execute = cpu->decode;cpu->decode.has_insn = FALSE;
+        }
+        
 
         if (ENABLE_DEBUG_MESSAGES)
         {
@@ -283,6 +368,7 @@ APEX_execute(APEX_CPU *cpu)
             }
 
             case OPCODE_SUB:
+            
             {
                 cpu->execute.result_buffer
                     = cpu->execute.rs1_value - cpu->execute.rs2_value;
@@ -298,6 +384,7 @@ APEX_execute(APEX_CPU *cpu)
                 }
                 break;
             }
+
 
             case OPCODE_MUL:
             {
@@ -395,7 +482,23 @@ APEX_execute(APEX_CPU *cpu)
             {
                 cpu->execute.memory_address
                     = cpu->execute.rs1_value + cpu->execute.rs2_value;
+                break;
 
+            }
+
+            case OPCODE_STORE:
+            {
+                cpu->execute.memory_address
+                    = cpu->execute.rs2_value + cpu->execute.imm;
+                break;
+
+            }
+
+            case OPCODE_STR:
+            {
+                cpu->execute.memory_address
+                    = cpu->execute.rs2_value + cpu->execute.rs3_value;
+                break;
             }
 
             case OPCODE_BZ:
@@ -435,6 +538,12 @@ APEX_execute(APEX_CPU *cpu)
                     /* Make sure fetch stage is enabled to start fetching from new PC */
                     cpu->fetch.has_insn = TRUE;
                 }
+                break;
+            }
+
+            case OPCODE_CMP:
+            {
+                cpu->zero_flag = cpu->execute.rs1_value - cpu->execute.rs2_value == 0 ? TRUE : FALSE;
                 break;
             }
 
@@ -493,6 +602,14 @@ APEX_memory(APEX_CPU *cpu)
                 break;
             }
 
+            case OPCODE_STORE:
+            case OPCODE_STR:
+            {
+                cpu->data_memory[cpu->memory.memory_address] 
+                    = cpu->memory.rs1_value;
+                break;
+            }
+
         }
 
         /* Copy data from memory latch to writeback latch*/
@@ -529,6 +646,7 @@ APEX_writeback(APEX_CPU *cpu)
             case OPCODE_XOR:
             {
                 cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+                cpu->registerValid[cpu->writeback.rd] = 0;
                 break;
             }
 
@@ -536,12 +654,14 @@ APEX_writeback(APEX_CPU *cpu)
             case OPCODE_LDR:
             {
                 cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+                cpu->registerValid[cpu->writeback.rd] = 0;
                 break;
             }
 
             case OPCODE_MOVC: 
             {
                 cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+                cpu->registerValid[cpu->writeback.rd] = 0;
                 break;
             }
         }

@@ -40,6 +40,8 @@ typedef struct CPU_Stage
     int result_buffer;
     int memory_address;
     int has_insn;
+    int isStall;
+    
 } CPU_Stage;
 
 /* Model of APEX CPU */
@@ -49,6 +51,7 @@ typedef struct APEX_CPU
     int clock;                     /* Clock cycles elapsed */
     int insn_completed;            /* Instructions retired */
     int regs[REG_FILE_SIZE];       /* Integer register file */
+    int registerValid[REG_FILE_SIZE];
     int code_memory_size;          /* Number of instruction in the input file */
     APEX_Instruction *code_memory; /* Code Memory */
     int data_memory[DATA_MEMORY_SIZE]; /* Data Memory */
