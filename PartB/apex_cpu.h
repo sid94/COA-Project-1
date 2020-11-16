@@ -59,7 +59,7 @@ typedef struct APEX_CPU
     int insn_completed;            /* Instructions retired */
     int regs[REG_FILE_SIZE];       /* Integer register file */
     int registerValid[REG_FILE_SIZE];
-    Data forwardData[REG_FILE_SIZE];
+    int forwardData[REG_FILE_SIZE];
     int code_memory_size;          /* Number of instruction in the input file */
     APEX_Instruction *code_memory; /* Code Memory */
     int data_memory[DATA_MEMORY_SIZE]; /* Data Memory */

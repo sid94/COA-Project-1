@@ -134,6 +134,10 @@ set_opcode_str(const char *opcode_str)
         return OPCODE_HALT;
     }
 
+    if(strcmp(opcode_str, "NOP") == 0){
+        return OPCODE_NOP;
+    }
+
     assert(0 && "Invalid opcode");
     return 0;
 }

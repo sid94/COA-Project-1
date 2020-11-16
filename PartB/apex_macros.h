@@ -37,6 +37,7 @@
 #define OPCODE_LDR 0x1a
 #define OPCODE_STR 0x1b
 #define OPCODE_CMP 0x1c
+#define OPCODE_NOP 0x1d
 
 
 /* Set this flag to 1 to enable debug messages */
