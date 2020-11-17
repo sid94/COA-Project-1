@@ -70,7 +70,7 @@ print_instruction(const CPU_Stage *stage)
 
     case OPCODE_STR:
     {
-        printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rs1, stage->rs2,
+        printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rs1, stage->rs2,
                stage->rs3);
         break;
     }
@@ -91,7 +91,7 @@ print_instruction(const CPU_Stage *stage)
     case OPCODE_ADDL:
     case OPCODE_SUBL:
     {
-        printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
+        printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rd, stage->rs1,
                stage->imm);
         break;
     }
@@ -237,7 +237,7 @@ APEX_fetch(APEX_CPU *cpu)
         }
         
     }
-    if (ENABLE_DEBUG_MESSAGES & cpu->stop_debug & cpu->fetch.has_insn)
+    if (ENABLE_DEBUG_MESSAGES && cpu->stop_debug && cpu->fetch.has_insn)
         {
             print_stage_content("Fetch", &cpu->fetch);
         }
@@ -303,7 +303,7 @@ APEX_decode(APEX_CPU *cpu)
         case OPCODE_SUBL:
         case OPCODE_LOAD:
         {
-            if (cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1])
+            if (!cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1])
             {
                 cpu->decode.isStall = 0;
                 cpu->registerValid[cpu->decode.rd] = 1;
@@ -384,15 +384,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value + cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -400,15 +392,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value + cpu->execute.imm;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -417,15 +401,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value - cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -433,15 +409,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value * cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -449,15 +417,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value - cpu->execute.imm;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -465,15 +425,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value & cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -481,15 +433,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value | cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -497,15 +441,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value ^ cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -583,15 +519,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.imm;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
         }
@@ -761,14 +689,14 @@ APEX_cpu_init(const char *filename,const char* func, const int n)
                 cpu->code_memory_size);
         fprintf(stderr, "APEX_CPU: PC initialized to %d\n", cpu->pc);
         fprintf(stderr, "APEX_CPU: Printing Code Memory\n");
-        printf("%-9s %-9s %-9s %-9s %-9s\n", "opcode_str", "rd", "rs1", "rs2",
+        printf("%-9s %-9s %-9s %-9s %-9s %-9s\n", "opcode_str", "rd", "rs1", "rs2", "rs3",
                "imm");
 
         for (i = 0; i < cpu->code_memory_size; ++i)
         {
-            printf("%-9s %-9d %-9d %-9d %-9d\n", cpu->code_memory[i].opcode_str,
+            printf("%-9s %-9d %-9d %-9d %-9d %-9d\n", cpu->code_memory[i].opcode_str,
                    cpu->code_memory[i].rd, cpu->code_memory[i].rs1,
-                   cpu->code_memory[i].rs2, cpu->code_memory[i].imm);
+                   cpu->code_memory[i].rs2, cpu->code_memory[i].rs3, cpu->code_memory[i].imm);
         }
     }
 
@@ -795,7 +723,7 @@ void APEX_cpu_run(APEX_CPU *cpu)
             printf("--------------------------------------------\n");
         }
 
-        if (cpu->clock == cpu->cycle || APEX_writeback(cpu))
+        if (APEX_writeback(cpu) || cpu->clock == cpu->cycle)
         {
             /* Halt in writeback stage */
             printf("APEX_CPU: Simulation Complete, cycles = %d instructions = %d\n", cpu->clock, cpu->insn_completed);

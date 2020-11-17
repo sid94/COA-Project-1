@@ -16,7 +16,7 @@ main(int argc, char const *argv[])
     APEX_CPU *cpu;
 
     fprintf(stderr, "APEX CPU Pipeline Simulator v%0.1lf\n", VERSION);
-    
+    argc = 4;
     if (argc != 4)
     {
         fprintf(stderr, "APEX_Help: Usage %s <input_file> <simulate/display/single_step> <no of cycles>\n", argv[0]);
