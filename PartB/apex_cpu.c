@@ -136,6 +136,44 @@ print_reg_file(const APEX_CPU *cpu)
     printf("\n");
 }
 
+static void
+print_memory(APEX_CPU *cpu){
+
+    printf("\n");
+
+    printf("-------------------------------------------\n%s\n-------------------------------------------\n", " STATE OF DATA MEMORY:");
+    for (int i = 0; i < 10 ; ++i)
+    {
+        
+        printf("|\tMEM[%d]\t|\tData Value=%d\n", i, cpu->data_memory[i]);
+    }
+
+    printf("\n");
+
+}
+
+static void
+print_regs_state(APEX_CPU *cpu){
+
+    printf("\n");
+
+    printf("-------------------------------------------\n%s\n-------------------------------------------\n", "STATE OF ARCHITECTURAL REGISTER FILE:");
+    for (int i = 0; i < REG_FILE_SIZE ; ++i)
+    {
+        char status[10];
+        if(cpu->registerValid[i]){
+            strcpy(status,"invalid");
+        }
+        else{
+             strcpy(status,"valid");
+        }
+        printf("|\tR[%d]\t|\tValue=%d \t\t|\tstatus=%s\n", i, cpu->regs[i], status);
+    }
+
+    printf("\n");
+
+}
+
 /*
  * Fetch Stage of APEX Pipeline
  *
@@ -197,15 +235,15 @@ APEX_fetch(APEX_CPU *cpu)
             }
         }
     }
-    if (ENABLE_DEBUG_MESSAGES)
-    {
-        print_stage_content("Fetch", &cpu->fetch);
-    }
-    /* Stop fetching new instructions if HALT is fetched */
-    if (cpu->fetch.opcode == OPCODE_HALT && !cpu->decode.isStall)
-    {
-        cpu->fetch.has_insn = FALSE;
-    }
+    if (ENABLE_DEBUG_MESSAGES  & cpu->stop_debug & cpu->fetch.has_insn)
+        {
+            print_stage_content("Fetch", &cpu->fetch);
+        }
+        /* Stop fetching new instructions if HALT is fetched */
+        if (cpu->fetch.opcode == OPCODE_HALT && !cpu->decode.isStall)
+        {
+            cpu->fetch.has_insn = FALSE;
+        }
 }
 
 /*
@@ -463,7 +501,7 @@ APEX_decode(APEX_CPU *cpu)
             strcpy(cpu->execute.opcode_str, "");
         }
 
-        if (ENABLE_DEBUG_MESSAGES)
+        if (ENABLE_DEBUG_MESSAGES  & cpu->stop_debug)
         {
             print_stage_content("Decode/RF", &cpu->decode);
         }
@@ -719,7 +757,7 @@ APEX_execute(APEX_CPU *cpu)
         cpu->memory = cpu->execute;
         cpu->execute.has_insn = FALSE;
 
-        if (ENABLE_DEBUG_MESSAGES)
+        if (ENABLE_DEBUG_MESSAGES  & cpu->stop_debug)
         {
             print_stage_content("Execute", &cpu->execute);
         }
@@ -766,7 +804,7 @@ APEX_memory(APEX_CPU *cpu)
         cpu->writeback = cpu->memory;
         cpu->memory.has_insn = FALSE;
 
-        if (ENABLE_DEBUG_MESSAGES)
+        if (ENABLE_DEBUG_MESSAGES  & cpu->stop_debug)
         {
             print_stage_content("Memory", &cpu->memory);
         }
@@ -819,7 +857,7 @@ APEX_writeback(APEX_CPU *cpu)
         cpu->insn_completed++;
         cpu->writeback.has_insn = FALSE;
 
-        if (ENABLE_DEBUG_MESSAGES)
+        if (ENABLE_DEBUG_MESSAGES  & cpu->stop_debug)
         {
             print_stage_content("Writeback", &cpu->writeback);
         }
@@ -841,17 +879,20 @@ APEX_writeback(APEX_CPU *cpu)
  * Note: You are free to edit this function according to your implementation
  */
 APEX_CPU *
-APEX_cpu_init(const char *filename)
+APEX_cpu_init(const char *filename,const char* func, const int n)
 {
     int i;
     APEX_CPU *cpu;
 
-    if (!filename)
+    if (!filename && !func && ! n)
     {
         return NULL;
     }
 
     cpu = calloc(1, sizeof(APEX_CPU));
+
+    cpu->stop_debug = strcmp(func,"simulate") == 0 ? 0 :1;
+    cpu->cycle = n;
 
     if (!cpu)
     {
@@ -862,7 +903,7 @@ APEX_cpu_init(const char *filename)
     cpu->pc = 4000;
     memset(cpu->regs, 0, sizeof(int) * REG_FILE_SIZE);
     memset(cpu->data_memory, 0, sizeof(int) * DATA_MEMORY_SIZE);
-    cpu->single_step = ENABLE_SINGLE_STEP;
+    cpu->single_step = strcmp(func,"single_step") == 0 ? ENABLE_SINGLE_STEP : 0;
 
     /* Parse input file and create code memory */
     cpu->code_memory = create_code_memory(filename, &cpu->code_memory_size);
@@ -872,7 +913,7 @@ APEX_cpu_init(const char *filename)
         return NULL;
     }
 
-    if (ENABLE_DEBUG_MESSAGES)
+    if (ENABLE_DEBUG_MESSAGES  & cpu->stop_debug)
     {
         fprintf(stderr,
                 "APEX_CPU: Initialized APEX CPU, loaded %d instructions\n",
@@ -906,14 +947,14 @@ void APEX_cpu_run(APEX_CPU *cpu)
 
     while (TRUE)
     {
-        if (ENABLE_DEBUG_MESSAGES)
+        if (ENABLE_DEBUG_MESSAGES  & cpu->stop_debug)
         {
             printf("--------------------------------------------\n");
             printf("Clock Cycle #: %d\n", cpu->clock);
             printf("--------------------------------------------\n");
         }
 
-        if (APEX_writeback(cpu))
+        if (cpu->clock == cpu->cycle || APEX_writeback(cpu))
         {
             /* Halt in writeback stage */
             printf("APEX_CPU: Simulation Complete, cycles = %d instructions = %d\n", cpu->clock, cpu->insn_completed);
@@ -925,7 +966,9 @@ void APEX_cpu_run(APEX_CPU *cpu)
         APEX_decode(cpu);
         APEX_fetch(cpu);
 
-        print_reg_file(cpu);
+        if(cpu->single_step){
+            print_reg_file(cpu);
+        }
 
         if (cpu->single_step)
         {
@@ -950,6 +993,10 @@ void APEX_cpu_run(APEX_CPU *cpu)
  */
 void APEX_cpu_stop(APEX_CPU *cpu)
 {
+    if(!cpu->single_step){
+        print_regs_state(cpu);
+        print_memory(cpu);
+    }
     free(cpu->code_memory);
     free(cpu);
 }

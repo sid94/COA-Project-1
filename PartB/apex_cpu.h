@@ -65,6 +65,8 @@ typedef struct APEX_CPU
     int data_memory[DATA_MEMORY_SIZE]; /* Data Memory */
     int single_step;               /* Wait for user input after every cycle */
     int zero_flag;                 /* {TRUE, FALSE} Used by BZ and BNZ to branch */
+    int stop_debug;
+    int cycle;
     int fetch_from_next_cycle;
 
     /* Pipeline stages */
@@ -76,7 +78,7 @@ typedef struct APEX_CPU
 } APEX_CPU;
 
 APEX_Instruction *create_code_memory(const char *filename, int *size);
-APEX_CPU *APEX_cpu_init(const char *filename);
+APEX_CPU *APEX_cpu_init(const char *filename,const char* func, const int n);
 void APEX_cpu_run(APEX_CPU *cpu);
 void APEX_cpu_stop(APEX_CPU *cpu);
 #endif
