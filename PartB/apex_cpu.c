@@ -32,9 +32,21 @@ print_instruction(const CPU_Stage *stage)
     case OPCODE_SUB:
     case OPCODE_MUL:
     case OPCODE_DIV:
+    {
+        printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
+               stage->rs2);
+        break;
+    }
+
     case OPCODE_AND:
     case OPCODE_OR:
     case OPCODE_XOR:
+    {
+        printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
+               stage->rs2);
+        break;
+    }
+
     case OPCODE_LDR:
     {
         printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
@@ -76,6 +88,11 @@ print_instruction(const CPU_Stage *stage)
     }
 
     case OPCODE_BZ:
+    {
+        printf("%s,#%d ", stage->opcode_str, stage->imm);
+        break;
+    }
+
     case OPCODE_BNZ:
     {
         printf("%s,#%d ", stage->opcode_str, stage->imm);
@@ -89,6 +106,12 @@ print_instruction(const CPU_Stage *stage)
     }
 
     case OPCODE_ADDL:
+    {
+        printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rd, stage->rs1,
+               stage->imm);
+        break;
+    }
+
     case OPCODE_SUBL:
     {
         printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rd, stage->rs1,
@@ -219,9 +242,7 @@ APEX_fetch(APEX_CPU *cpu)
         else
         {
             /* Update PC for next instruction */
-            cpu->pc += 4;
-            /* Copy data from fetch latch to decode latch*/
-            cpu->decode = cpu->fetch;
+            cpu->pc += 4; cpu->decode = cpu->fetch;
         }
     }
     else
@@ -231,9 +252,7 @@ APEX_fetch(APEX_CPU *cpu)
         {
             if (!cpu->decode.isStall)
             {
-                cpu->pc += 4;
-                cpu->fetch.isStall = 0;
-                cpu->decode = cpu->fetch;
+                cpu->pc += 4; cpu->fetch.isStall = 0; cpu->decode = cpu->fetch;
             }
         }
     }
@@ -278,17 +297,11 @@ APEX_decode(APEX_CPU *cpu)
             // if we dont find any of the register i.e we have load ins prior to the current ins and we dont find the rs1 then we stall the current ins in d/f stage
             // if rs1 is invalid
             // if some previos instruction has marked the destination register invalid there is a posinility that you can get the value in the forwarded register
-            if (cpu->registerValid[cpu->decode.rs1])
-            {
-                rs1Found = 1;
-            }
+            rs1Found = cpu->registerValid[cpu->decode.rs1] ? 1 : 0;
 
             // if rs2 is invalid
             // Same as above
-            if (cpu->registerValid[cpu->decode.rs2])
-            {
-                rs2Found = 1;
-            }
+            rs2Found = cpu->registerValid[cpu->decode.rs2] ? 1 : 0;
 
             // Default unstalled
             cpu->decode.isStall = 0;
@@ -358,10 +371,7 @@ APEX_decode(APEX_CPU *cpu)
 
             // Same comments as R1 in first switch case
             // if rs1 is invalid
-            if (cpu->registerValid[cpu->decode.rs1])
-            {
-                rs1Found = 1;
-            }
+            rs1Found = cpu->registerValid[cpu->decode.rs1] ? 1 : 0;
 
             // Default unstalled
             cpu->decode.isStall = 0;
@@ -369,20 +379,15 @@ APEX_decode(APEX_CPU *cpu)
             if (rs1Found)
             {
                 if ((strcmp(cpu->execute.opcode_str, "LOAD") == 0 || strcmp(cpu->execute.opcode_str, "LDR") == 0) && cpu->execute.rd == cpu->decode.rs1)
-                {
-
-                    cpu->decode.isStall = 1;
+                {cpu->decode.isStall = 1;
                 }
                 else
-                {
-                    cpu->decode.rs1_value = cpu->forwardData[cpu->decode.rs1];
-                    cpu->registerValid[cpu->decode.rd] = 1;
+                {cpu->decode.rs1_value = cpu->forwardData[cpu->decode.rs1];cpu->registerValid[cpu->decode.rd] = 1;
                 }
             }
             else
             {
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
-                cpu->registerValid[cpu->decode.rd] = 1;
+                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1]; cpu->registerValid[cpu->decode.rd] = 1;
             }
             break;
         }
@@ -392,22 +397,13 @@ APEX_decode(APEX_CPU *cpu)
 
             // Same comments as R1 in first switch case
             // if rs1 is invalid
-            if (cpu->registerValid[cpu->decode.rs1])
-            {
-                rs1Found = 1;
-            }
+            rs1Found = cpu->registerValid[cpu->decode.rs1] ? 1 : 0;
 
             // if rs2 is invalid
-            if (cpu->registerValid[cpu->decode.rs2])
-            {
-                rs2Found = 1;
-            }
+            rs2Found = cpu->registerValid[cpu->decode.rs2] ? 1 : 0;
 
             // if rs3 is invalid
-            if (cpu->registerValid[cpu->decode.rs3])
-            {
-                rs3Found = 1;
-            }
+            rs3Found = cpu->registerValid[cpu->decode.rs3] ? 1 : 0;
 
             // Default unstalled
             cpu->decode.isStall = 0;
@@ -415,13 +411,10 @@ APEX_decode(APEX_CPU *cpu)
             if (rs1Found)
             {
                 if ((strcmp(cpu->execute.opcode_str, "LOAD") == 0 || strcmp(cpu->execute.opcode_str, "LDR") == 0) && cpu->execute.rd == cpu->decode.rs1)
-                {
-
-                    cpu->decode.isStall = 1;
+                {cpu->decode.isStall = 1;
                 }
                 else
-                {
-                    cpu->decode.rs1_value = cpu->forwardData[cpu->decode.rs1];
+                {cpu->decode.rs1_value = cpu->forwardData[cpu->decode.rs1];
                 }
             }
             else
@@ -432,37 +425,28 @@ APEX_decode(APEX_CPU *cpu)
             if (rs2Found)
             {
                 if ((strcmp(cpu->execute.opcode_str, "LOAD") == 0 || strcmp(cpu->execute.opcode_str, "LDR") == 0) && cpu->execute.rd == cpu->decode.rs2)
-                {
-
-                    cpu->decode.isStall = 1;
+                {cpu->decode.isStall = 1;
                 }
                 else
-                {
-                    cpu->decode.rs2_value = cpu->forwardData[cpu->decode.rs2];
+                {cpu->decode.rs2_value = cpu->forwardData[cpu->decode.rs2];
                 }
             }
             else
-            {
-                cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+            {cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
             }
 
             if (rs3Found)
             {
                 if ((strcmp(cpu->execute.opcode_str, "LOAD") == 0 || strcmp(cpu->execute.opcode_str, "LDR") == 0) && cpu->execute.rd == cpu->decode.rs3)
-                {
-
-                    cpu->decode.isStall = 1;
+                {cpu->decode.isStall = 1;
                 }
                 else
-                {
-                    cpu->decode.rs3_value = cpu->forwardData[cpu->decode.rs3];
+                {cpu->decode.rs3_value = cpu->forwardData[cpu->decode.rs3];
                 }
             }
             else
-            {
-                cpu->decode.rs3_value = cpu->regs[cpu->decode.rs3];
+            {cpu->decode.rs3_value = cpu->regs[cpu->decode.rs3];
             }
-
             break;
         }
 
@@ -470,9 +454,7 @@ APEX_decode(APEX_CPU *cpu)
         {
             /* MOVC doesn't have register operands */
             if (!cpu->registerValid[cpu->decode.rd])
-            {
-                cpu->decode.isStall = 0;
-                cpu->registerValid[cpu->decode.rd] = 1;
+            {cpu->decode.isStall = 0; cpu->registerValid[cpu->decode.rd] = 1;
             }
             else
             {
@@ -493,8 +475,7 @@ APEX_decode(APEX_CPU *cpu)
         if (!cpu->decode.isStall)
         {
             /* Copy data from decode latch to execute latch*/
-            cpu->execute = cpu->decode;
-            cpu->decode.has_insn = FALSE;
+            cpu->execute = cpu->decode; cpu->decode.has_insn = FALSE;
         }
         else
         {
@@ -529,31 +510,13 @@ APEX_execute(APEX_CPU *cpu)
 
             cpu->forwardData[cpu->execute.rd] = cpu->execute.result_buffer;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+           
             break;
         }
 
         case OPCODE_ADDL:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value + cpu->execute.imm;
-
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
             break;
         }
 
@@ -565,15 +528,7 @@ APEX_execute(APEX_CPU *cpu)
 
             cpu->forwardData[cpu->execute.rd] = cpu->execute.result_buffer;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -582,15 +537,7 @@ APEX_execute(APEX_CPU *cpu)
 
             cpu->execute.result_buffer = cpu->execute.rs1_value * cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+           
             break;
         }
 
@@ -598,15 +545,7 @@ APEX_execute(APEX_CPU *cpu)
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value - cpu->execute.imm;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -617,15 +556,7 @@ APEX_execute(APEX_CPU *cpu)
 
             cpu->forwardData[cpu->execute.rd] = cpu->execute.result_buffer;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -634,15 +565,7 @@ APEX_execute(APEX_CPU *cpu)
 
             cpu->execute.result_buffer = cpu->execute.rs1_value | cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
 
@@ -651,15 +574,7 @@ APEX_execute(APEX_CPU *cpu)
 
             cpu->execute.result_buffer = cpu->execute.rs1_value ^ cpu->execute.rs2_value;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+           
             break;
         }
 
@@ -742,15 +657,7 @@ APEX_execute(APEX_CPU *cpu)
 
             cpu->forwardData[cpu->execute.rd] = cpu->execute.result_buffer;
 
-            /* Set the zero flag based on the result buffer */
-            if (cpu->execute.result_buffer == 0)
-            {
-                cpu->zero_flag = TRUE;
-            }
-            else
-            {
-                cpu->zero_flag = FALSE;
-            }
+            
             break;
         }
         }
@@ -785,6 +692,13 @@ APEX_memory(APEX_CPU *cpu)
         }
 
         case OPCODE_LOAD:
+        {
+            /* Read from data memory */
+            cpu->memory.result_buffer = cpu->data_memory[cpu->memory.memory_address];
+
+            cpu->forwardData[cpu->memory.rd] = cpu->memory.result_buffer;
+            break;
+        }
         case OPCODE_LDR:
         {
             /* Read from data memory */
@@ -795,6 +709,10 @@ APEX_memory(APEX_CPU *cpu)
         }
 
         case OPCODE_STORE:
+        {
+            cpu->data_memory[cpu->memory.memory_address] = cpu->memory.rs1_value;
+            break;
+        }
         case OPCODE_STR:
         {
             cpu->data_memory[cpu->memory.memory_address] = cpu->memory.rs1_value;
@@ -830,7 +748,19 @@ APEX_writeback(APEX_CPU *cpu)
         case OPCODE_ADDL:
         case OPCODE_SUB:
         case OPCODE_SUBL:
+        {
+            cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+            cpu->registerValid[cpu->writeback.rd] = 0;
+            break;
+        }
+
         case OPCODE_MUL:
+        {
+            cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+            cpu->registerValid[cpu->writeback.rd] = 0;
+            break;
+        }
+
         case OPCODE_AND:
         case OPCODE_OR:
         case OPCODE_XOR:

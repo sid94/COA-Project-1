@@ -32,9 +32,21 @@ print_instruction(const CPU_Stage *stage)
     case OPCODE_SUB:
     case OPCODE_MUL:
     case OPCODE_DIV:
+    {
+        printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
+               stage->rs2);
+        break;
+    }
+
     case OPCODE_AND:
     case OPCODE_OR:
     case OPCODE_XOR:
+    {
+        printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
+               stage->rs2);
+        break;
+    }
+
     case OPCODE_LDR:
     {
         printf("%s,R%d,R%d,R%d ", stage->opcode_str, stage->rd, stage->rs1,
@@ -76,6 +88,11 @@ print_instruction(const CPU_Stage *stage)
     }
 
     case OPCODE_BZ:
+    {
+        printf("%s,#%d ", stage->opcode_str, stage->imm);
+        break;
+    }
+
     case OPCODE_BNZ:
     {
         printf("%s,#%d ", stage->opcode_str, stage->imm);
@@ -89,6 +106,12 @@ print_instruction(const CPU_Stage *stage)
     }
 
     case OPCODE_ADDL:
+    {
+        printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rd, stage->rs1,
+               stage->imm);
+        break;
+    }
+
     case OPCODE_SUBL:
     {
         printf("%s,R%d,R%d,#%d ", stage->opcode_str, stage->rd, stage->rs1,
@@ -217,9 +240,7 @@ APEX_fetch(APEX_CPU *cpu)
         else
         {
             /* Update PC for next instruction */
-            cpu->pc += 4;
-            /* Copy data from fetch latch to decode latch*/
-            cpu->decode = cpu->fetch;
+            cpu->pc += 4; cpu->decode = cpu->fetch;
         }
         
     }
@@ -230,9 +251,7 @@ APEX_fetch(APEX_CPU *cpu)
         {
             if (!cpu->decode.isStall)
             {
-                cpu->pc += 4;
-                cpu->fetch.isStall = 0;
-                cpu->decode = cpu->fetch;
+                cpu->pc += 4; cpu->fetch.isStall = 0; cpu->decode = cpu->fetch;
             }
         }
         
@@ -264,21 +283,39 @@ APEX_decode(APEX_CPU *cpu)
         case OPCODE_ADD:
         case OPCODE_SUB:
         case OPCODE_MUL:
+        {
+            if (!cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2])
+            {
+                cpu->decode.isStall = 0; cpu->registerValid[cpu->decode.rd] = 1;
+                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1]; cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+            }
+            else{cpu->decode.isStall = 1;
+            }
+            break;
+        }
+
         case OPCODE_AND:
         case OPCODE_OR:
         case OPCODE_XOR:
+        {
+            if (!cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2])
+            {
+                cpu->decode.isStall = 0; cpu->registerValid[cpu->decode.rd] = 1;
+                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1]; cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+            }
+            else{cpu->decode.isStall = 1;
+            }
+            break;
+        }
+
         case OPCODE_LDR:
         {
             if (!cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2])
             {
-                cpu->decode.isStall = 0;
-                cpu->registerValid[cpu->decode.rd] = 1;
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
-                cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
+                cpu->decode.isStall = 0; cpu->registerValid[cpu->decode.rd] = 1;
+                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1]; cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
             }
-            else
-            {
-                cpu->decode.isStall = 1;
+            else{cpu->decode.isStall = 1;
             }
             break;
         }
@@ -288,45 +325,48 @@ APEX_decode(APEX_CPU *cpu)
         {
             if (!cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2])
             {
-                cpu->decode.isStall = 0;
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                cpu->decode.isStall = 0; cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
                 cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
             }
-            else
-            {
-                cpu->decode.isStall = 1;
+            else{cpu->decode.isStall = 1;
             }
             break;
         }
 
         case OPCODE_ADDL:
         case OPCODE_SUBL:
+        {
+            if (!cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1])
+            {
+                cpu->decode.isStall = 0; cpu->registerValid[cpu->decode.rd] = 1;
+                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+            }
+            else{ cpu->decode.isStall = 1;
+            }
+            break;
+        }
+
         case OPCODE_LOAD:
         {
             if (!cpu->registerValid[cpu->decode.rd] && !cpu->registerValid[cpu->decode.rs1])
             {
-                cpu->decode.isStall = 0;
-                cpu->registerValid[cpu->decode.rd] = 1;
+                cpu->decode.isStall = 0; cpu->registerValid[cpu->decode.rd] = 1;
                 cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
             }
-            else
-            {
-                cpu->decode.isStall = 1;
+            else{ cpu->decode.isStall = 1;
             }
             break;
         }
+
         case OPCODE_STR:
         {
             if (!cpu->registerValid[cpu->decode.rs1] && !cpu->registerValid[cpu->decode.rs2] && !cpu->registerValid[cpu->decode.rs3])
             {
-                cpu->decode.isStall = 0;
-                cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
+                cpu->decode.isStall = 0; cpu->decode.rs1_value = cpu->regs[cpu->decode.rs1];
                 cpu->decode.rs2_value = cpu->regs[cpu->decode.rs2];
                 cpu->decode.rs3_value = cpu->regs[cpu->decode.rs3];
             }
-            else
-            {
-                cpu->decode.isStall = 1;
+            else{ cpu->decode.isStall = 1;
             }
             break;
         }
@@ -339,9 +379,7 @@ APEX_decode(APEX_CPU *cpu)
                 cpu->decode.isStall = 0;
                 cpu->registerValid[cpu->decode.rd] = 1;
             }
-            else
-            {
-                cpu->decode.isStall = 1;
+            else { cpu->decode.isStall = 1; 
             }
             break;
         }
@@ -356,8 +394,7 @@ APEX_decode(APEX_CPU *cpu)
         if (!cpu->decode.isStall)
         {
             /* Copy data from decode latch to execute latch*/
-            cpu->execute = cpu->decode;
-            cpu->decode.has_insn = FALSE;
+            cpu->execute = cpu->decode; cpu->decode.has_insn = FALSE;
         }
 
         if (ENABLE_DEBUG_MESSAGES & cpu->stop_debug)
@@ -383,16 +420,12 @@ APEX_execute(APEX_CPU *cpu)
         case OPCODE_ADD:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value + cpu->execute.rs2_value;
-
-            
             break;
         }
 
         case OPCODE_ADDL:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value + cpu->execute.imm;
-
-            
             break;
         }
 
@@ -400,48 +433,36 @@ APEX_execute(APEX_CPU *cpu)
 
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value - cpu->execute.rs2_value;
-
-            
             break;
         }
 
         case OPCODE_MUL:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value * cpu->execute.rs2_value;
-
-            
             break;
         }
 
         case OPCODE_SUBL:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value - cpu->execute.imm;
-
-            
             break;
         }
 
         case OPCODE_AND:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value & cpu->execute.rs2_value;
-
-            
             break;
         }
 
         case OPCODE_OR:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value | cpu->execute.rs2_value;
-
-            
             break;
         }
 
         case OPCODE_XOR:
         {
             cpu->execute.result_buffer = cpu->execute.rs1_value ^ cpu->execute.rs2_value;
-
-            
             break;
         }
 
@@ -518,8 +539,6 @@ APEX_execute(APEX_CPU *cpu)
         case OPCODE_MOVC:
         {
             cpu->execute.result_buffer = cpu->execute.imm;
-
-            
             break;
         }
         }
@@ -554,6 +573,12 @@ APEX_memory(APEX_CPU *cpu)
         }
 
         case OPCODE_LOAD:
+        {
+            /* Read from data memory */
+            cpu->memory.result_buffer = cpu->data_memory[cpu->memory.memory_address];
+            break;
+        }
+
         case OPCODE_LDR:
         {
             /* Read from data memory */
@@ -562,6 +587,11 @@ APEX_memory(APEX_CPU *cpu)
         }
 
         case OPCODE_STORE:
+        {
+            cpu->data_memory[cpu->memory.memory_address] = cpu->memory.rs1_value;
+            break;
+        }
+
         case OPCODE_STR:
         {
             cpu->data_memory[cpu->memory.memory_address] = cpu->memory.rs1_value;
@@ -595,9 +625,27 @@ APEX_writeback(APEX_CPU *cpu)
         {
         case OPCODE_ADD:
         case OPCODE_ADDL:
+        {
+            cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+            cpu->registerValid[cpu->writeback.rd] = 0;
+            break;
+        }
+
         case OPCODE_SUB:
         case OPCODE_SUBL:
+        {
+            cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+            cpu->registerValid[cpu->writeback.rd] = 0;
+            break;
+        }
+        
         case OPCODE_MUL:
+        {
+            cpu->regs[cpu->writeback.rd] = cpu->writeback.result_buffer;
+            cpu->registerValid[cpu->writeback.rd] = 0;
+            break;
+        }
+
         case OPCODE_AND:
         case OPCODE_OR:
         case OPCODE_XOR:
